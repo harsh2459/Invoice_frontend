@@ -42,6 +42,8 @@ interface Invoice {
   total: number | string;
   amount_paid: number | string;
   balance: number | string;
+  previous_balance?: number | string;
+  current_balance?: number | string;
   payment_status: "unpaid" | "partial" | "paid";
   company_name: string | null;
   company_address?: string | null;
@@ -531,6 +533,18 @@ export default function InvoiceView() {
                   <span>{isPaid ? "Amount Due" : "Balance Due"}</span>
                   <span className="tabular-nums">{formatINR(isPaid ? 0 : balance)}</span>
                 </div>
+                {Number(inv.previous_balance || 0) > 0 && (
+                  <>
+                    <div className="flex justify-between border-t border-primary/20 pt-1.5 mt-1 text-muted">
+                      <span>Previous Balance</span>
+                      <span className="tabular-nums">{formatINR(inv.previous_balance)}</span>
+                    </div>
+                    <div className="flex justify-between font-bold text-negative text-[14px]">
+                      <span>Current Balance</span>
+                      <span className="tabular-nums">{formatINR(inv.current_balance)}</span>
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           </div>

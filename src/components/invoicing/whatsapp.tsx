@@ -97,19 +97,21 @@ export function WaSendModal({
       ? "Send payment reminder"
       : "Send WhatsApp message";
 
-  // Pull the filled template as the starting message (invoice/reminder only).
+  // Pull the FILLED message (what actually sends) so the modal is WYSIWYG.
   useEffect(() => {
     if (kind === "text") return;
     let alive = true;
     (async () => {
       try {
-        const tpls = await api("/whatsapp/templates");
-        // The server fills placeholders on send; here we just seed the raw
-        // template so the user can edit. Placeholders stay visible until sent —
-        // that's fine and matches "one-click with a chance to tweak".
-        if (alive) setMessage(kind === "invoice" ? tpls.invoice : tpls.reminder);
+        const r = await api(`/whatsapp/send/${kind}/${invoiceId}/preview`);
+        if (alive) setMessage(r.message || "");
       } catch {
-        /* leave empty */
+        try {
+          const tpls = await api("/whatsapp/templates");
+          if (alive) setMessage(kind === "invoice" ? tpls.invoice : tpls.reminder);
+        } catch {
+          /* leave empty */
+        }
       } finally {
         if (alive) setLoadingPreview(false);
       }
@@ -117,7 +119,7 @@ export function WaSendModal({
     return () => {
       alive = false;
     };
-  }, [kind]);
+  }, [kind, invoiceId]);
 
   const runCheck = async () => {
     if (!phone.trim() || companyId == null) return;

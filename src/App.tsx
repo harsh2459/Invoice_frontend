@@ -10,6 +10,7 @@ import Reports from "./components/Reports";
 import ReportsOverview from "./components/ReportsOverview";
 import Companies from "./components/invoicing/Companies";
 import Clients from "./components/invoicing/Clients";
+import ClientView from "./components/invoicing/ClientView";
 import Products from "./components/invoicing/Products";
 import Invoices from "./components/invoicing/Invoices";
 import InvoiceForm from "./components/invoicing/InvoiceForm";
@@ -78,6 +79,7 @@ function App() {
           <Route path="invoicing/invoices/:id" element={<PrivateRoute adminOnly><InvoiceView /></PrivateRoute>} />
           <Route path="invoicing/companies" element={<PrivateRoute adminOnly><Companies /></PrivateRoute>} />
           <Route path="invoicing/clients" element={<PrivateRoute adminOnly><Clients /></PrivateRoute>} />
+          <Route path="invoicing/clients/:id" element={<PrivateRoute adminOnly><ClientView /></PrivateRoute>} />
           <Route path="invoicing/products" element={<PrivateRoute adminOnly><Products /></PrivateRoute>} />
           <Route path="invoicing/banks" element={<PrivateRoute adminOnly><BankAccounts /></PrivateRoute>} />
           <Route path="invoicing/suppliers" element={<PrivateRoute adminOnly><Suppliers /></PrivateRoute>} />

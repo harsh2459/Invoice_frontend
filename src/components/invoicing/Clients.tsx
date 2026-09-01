@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Contact, Pencil, Trash2 } from "lucide-react";
 import { api } from "../../api";
 import { toast } from "../../toast";
@@ -14,6 +15,7 @@ interface Client {
 }
 
 export default function Clients() {
+  const navigate = useNavigate();
   const [rows, setRows] = useState<Client[]>([]);
   const [companies, setCompanies] = useState<{ id: number; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -85,7 +87,11 @@ export default function Clients() {
               </thead>
               <tbody>
                 {rows.map((c) => (
-                  <tr key={c.id} className="hover:bg-hover transition-colors">
+                  <tr
+                    key={c.id}
+                    onClick={() => navigate(`/invoicing/clients/${c.id}`)}
+                    className="hover:bg-hover transition-colors cursor-pointer"
+                  >
                     <td className="px-4 py-3 font-medium text-ink border-b border-line">
                       {c.name}
                     </td>
@@ -102,7 +108,10 @@ export default function Clients() {
                     <td className="px-4 py-3 text-right border-b border-line tabular-nums">
                       {c.company_count ?? 0}
                     </td>
-                    <td className="px-4 py-3 text-right border-b border-line whitespace-nowrap">
+                    <td
+                      className="px-4 py-3 text-right border-b border-line whitespace-nowrap"
+                      onClick={(e) => e.stopPropagation()}
+                    >
                       <button
                         onClick={() => setModal({ open: true, editId: c.id })}
                         className="text-muted hover:text-primary p-1 rounded hover:bg-primary-soft transition-colors"

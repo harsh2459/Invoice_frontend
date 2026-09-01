@@ -68,6 +68,7 @@ export default function InvoiceForm() {
   // "Payment received now" — create mode only. Records a payment with the invoice.
   const [payNow, setPayNow] = useState({ amount: "", paid_on: new Date().toISOString().slice(0, 10), bank_account_id: "" });
   const [banks, setBanks] = useState<any[]>([]);
+  const [priorDue, setPriorDue] = useState(0); // client's outstanding before this bill
 
   useEffect(() => {
     api("/companies").then(setCompanies);
@@ -138,6 +139,21 @@ export default function InvoiceForm() {
       alive = false;
     };
   }, [form.company_id, isEdit]);
+
+  // Client's outstanding balance before this bill (create mode only).
+  useEffect(() => {
+    if (isEdit || !form.client_id) {
+      setPriorDue(0);
+      return;
+    }
+    let alive = true;
+    api(`/invoices/client-balance?client_id=${form.client_id}`)
+      .then((r) => alive && setPriorDue(Number(r?.prior_due || 0)))
+      .catch(() => alive && setPriorDue(0));
+    return () => {
+      alive = false;
+    };
+  }, [form.client_id, isEdit]);
 
   // Auto-fill the next number when creating and a company is chosen (unless the
   // user already typed one).
@@ -216,10 +232,12 @@ export default function InvoiceForm() {
     if (clean.some((it) => !it.description)) return toast("Every line needs a description");
 
     const payAmt = Number(payNow.amount || 0);
+    // New invoices are always dated today; existing ones keep their original date.
+    const invoiceDate = isEdit ? form.invoice_date : new Date().toISOString().slice(0, 10);
     const payload: any = {
       company_id: form.company_id,
       client_id: form.client_id,
-      invoice_date: form.invoice_date,
+      invoice_date: invoiceDate,
       due_date: form.due_date || null,
       number: form.number,
       notes: form.notes,
@@ -230,7 +248,7 @@ export default function InvoiceForm() {
     if (!isEdit && payAmt > 0) {
       payload.payment = {
         amount: payAmt,
-        paid_on: payNow.paid_on || form.invoice_date,
+        paid_on: payNow.paid_on || invoiceDate,
         bank_account_id: payNow.bank_account_id || null,
       };
     }
@@ -247,11 +265,13 @@ export default function InvoiceForm() {
           body: JSON.stringify(payload),
         });
         toast(
-          created.payment_status === "paid"
-            ? "Invoice created — fully paid"
+          created.client_balance != null && Number(created.client_balance) <= 0.009
+            ? "Invoice created — client fully settled"
+            : created.payment_status === "paid"
+            ? `Invoice created — fully paid · client still owes ${formatINR(created.client_balance)}`
             : created.payment_status === "partial"
-            ? `Invoice created — ${formatINR(created.balance)} still due`
-            : "Invoice created"
+            ? `Invoice created — ${formatINR(created.balance)} due on this · client owes ${formatINR(created.client_balance)}`
+            : `Invoice created — client owes ${formatINR(created.client_balance)}`
         );
         navigate(`/invoicing/invoices/${created.id}`);
       }
@@ -316,11 +336,16 @@ export default function InvoiceForm() {
             </div>
             <div>
               <label className={labelCls}>Invoice Date</label>
-              <DateField
-                required
-                value={form.invoice_date}
-                onChange={(iso) => setForm({ ...form, invoice_date: iso })}
+              <input
+                type="text"
+                value={new Date().toLocaleDateString("en-GB")}
+                readOnly
+                disabled
+                className={`${inputCls} bg-hover text-muted cursor-not-allowed`}
               />
+              {!isEdit && (
+                <p className="text-[11px] text-muted mt-1">Always today — can't be back- or post-dated.</p>
+              )}
             </div>
             <div>
               <label className={labelCls}>Payment Due Date (optional)</label>
@@ -513,29 +538,56 @@ export default function InvoiceForm() {
                 <span>Grand Total</span>
                 <span className="tabular-nums">{formatINR(totals.total)}</span>
               </div>
+              {!isEdit && priorDue > 0 && (
+                <>
+                  <div className="flex justify-between text-muted">
+                    <span>Prior dues (this client)</span>
+                    <span className="tabular-nums">{formatINR(priorDue)}</span>
+                  </div>
+                  <div className="flex justify-between font-bold text-negative">
+                    <span>Client owes (incl. this)</span>
+                    <span className="tabular-nums">{formatINR(priorDue + totals.total)}</span>
+                  </div>
+                </>
+              )}
             </div>
 
             {!isEdit && (
               <div className="border-t border-line pt-3 space-y-2">
                 <div className="flex items-center justify-between">
                   <label className={labelCls + " mb-0"}>Payment received now</label>
-                  {payNow.amount !== String(totals.total) && totals.total > 0 && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setPayNow((p) => ({ ...p, amount: String(round2(totals.total)) }))
-                      }
-                      className="text-[11.5px] text-primary hover:underline"
-                    >
-                      Pay full
-                    </button>
+                  {totals.total > 0 && (
+                    <span className="flex gap-2 text-[11.5px]">
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setPayNow((p) => ({ ...p, amount: String(round2(totals.total)) }))
+                        }
+                        className="text-primary hover:underline"
+                      >
+                        This bill
+                      </button>
+                      {priorDue > 0 && (
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setPayNow((p) => ({
+                              ...p,
+                              amount: String(round2(totals.total + priorDue)),
+                            }))
+                          }
+                          className="text-primary hover:underline"
+                        >
+                          Clear all
+                        </button>
+                      )}
+                    </span>
                   )}
                 </div>
                 <input
                   type="number"
                   step="0.01"
                   min="0"
-                  max={totals.total || undefined}
                   value={payNow.amount}
                   onChange={(e) => setPayNow((p) => ({ ...p, amount: e.target.value }))}
                   placeholder="0.00 — leave empty if unpaid"
@@ -564,19 +616,31 @@ export default function InvoiceForm() {
                         ))}
                       </select>
                     </div>
-                    <div
-                      className={`text-[12px] font-semibold rounded-md px-2.5 py-1.5 ${
-                        Number(payNow.amount) + 0.005 >= totals.total
-                          ? "bg-positive-soft text-positive"
-                          : "bg-amazon text-amazon-text"
-                      }`}
-                    >
-                      {Number(payNow.amount) + 0.005 >= totals.total
-                        ? "Will be marked FULLY PAID"
-                        : `PAID ${formatINR(payNow.amount)} • DUE ${formatINR(
-                            round2(totals.total - Number(payNow.amount))
-                          )}`}
-                    </div>
+                    {(() => {
+                      const pay = Number(payNow.amount);
+                      const thisBillDue = round2(Math.max(0, totals.total - pay));
+                      const clientAfter = round2(priorDue + totals.total - pay);
+                      const overpay = pay > totals.total + 0.005;
+                      const fullThis = pay + 0.005 >= totals.total;
+                      return (
+                        <div
+                          className={`text-[12px] font-semibold rounded-md px-2.5 py-1.5 space-y-0.5 ${
+                            clientAfter <= 0.009
+                              ? "bg-positive-soft text-positive"
+                              : "bg-amazon text-amazon-text"
+                          }`}
+                        >
+                          <div>
+                            {fullThis ? "This bill: FULLY PAID" : `This bill: DUE ${formatINR(thisBillDue)}`}
+                            {overpay && priorDue > 0 && ` · ${formatINR(round2(pay - totals.total))} to old dues`}
+                          </div>
+                          <div>
+                            Client balance after:{" "}
+                            {clientAfter <= 0.009 ? "₹0 — settled" : formatINR(clientAfter)}
+                          </div>
+                        </div>
+                      );
+                    })()}
                   </>
                 )}
               </div>
