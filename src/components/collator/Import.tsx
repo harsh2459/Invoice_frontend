@@ -4,7 +4,6 @@
  */
 import { useRef, useState } from "react";
 import { UploadCloud, FileText, CheckCircle2, XCircle, MinusCircle, Loader2, X } from "lucide-react";
-import { api } from "../../api";
 import { API_BASE } from "../../config";
 import { toast } from "../../toast";
 import { useCompanies, PageHeader, YearMonthPicker } from "./shared";

@@ -3,7 +3,7 @@
  * Day Book / Bank Book / Ratios / Compare / Exceptions / Cost Centres.
  * Tab state synced to ?tab=. Single-entry approximation from classified bank txns.
  */
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useSearchParams } from "react-router-dom";
 import { FileBarChart } from "lucide-react";
 import { api } from "../../api";

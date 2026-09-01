@@ -2,7 +2,6 @@ import { useEffect, useState } from "react";
 import { History, Trash2, RefreshCw } from "lucide-react";
 import { api } from "../../api";
 import { toast } from "../../toast";
-import { confirmDialog } from "../../confirm";
 import { formatDate } from "../../format";
 import { CompanyFilter, YearMonthPicker, PageHeader } from "./shared";
 
