@@ -1,0 +1,50 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+
+  --color-primary: #2490EF;
+  --color-primary-soft: #EAF4FE;
+  --color-positive: #1B9E5A;
+  --color-positive-soft: #E7F7EE;
+  --color-negative: #E24C4B;
+  --color-negative-soft: #FDECEC;
+
+  --color-sidebar-bg: #F7F8FA;
+  --color-sidebar-border: #E4E7EB;
+  --color-line: #E4E7EB;
+  --color-hover: #F4F5F7;
+  --color-muted: #8D99A6;
+  --color-ink: #1F272E;
+
+  --color-amazon: #FFF3E0;
+  --color-amazon-text: #B87300;
+  --color-flipkart: #E8F0FE;
+  --color-flipkart-text: #2059C4;
+  --color-meesho: #FCE4EC;
+  --color-meesho-text: #9F2B68;
+  --color-other: #F1F2F4;
+  --color-other-text: #6B7280;
+}
+
+html {
+  font-size: 13.5px;
+}
+
+body {
+  background-color: #ffffff;
+  color: #1F272E;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Hide number-input spinners so narrow numeric cells show the full value. */
+.no-spinner::-webkit-outer-spin-button,
+.no-spinner::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.no-spinner {
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
