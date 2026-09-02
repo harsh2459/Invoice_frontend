@@ -464,6 +464,7 @@ export function ProductModal({
     name: "",
     unit: "",
     default_rate: "",
+    cost_price: "",
     gst_rate: "",
     hsn: "",
     track_stock: false,
@@ -493,6 +494,7 @@ export function ProductModal({
           name: p.name ?? "",
           unit: p.unit ?? "",
           default_rate: p.default_rate != null ? String(p.default_rate) : "",
+          cost_price: p.cost_price != null ? String(p.cost_price) : "",
           gst_rate: p.gst_rate != null ? String(p.gst_rate) : "",
           hsn: p.hsn ?? "",
           track_stock: !!p.track_stock,
@@ -525,6 +527,7 @@ export function ProductModal({
         name: form.name,
         unit: form.unit,
         default_rate: form.default_rate || 0,
+        cost_price: form.cost_price || 0,
         gst_rate: form.gst_rate || 0,
         hsn: form.hsn,
         track_stock: form.track_stock,
@@ -584,13 +587,24 @@ export function ProductModal({
               />
             </div>
             <div>
-              <label className={labelCls}>Default Rate (₹)</label>
+              <label className={labelCls}>Selling Rate (₹)</label>
               <input
                 type="number"
                 step="0.01"
                 min="0"
                 value={form.default_rate}
                 onChange={(e) => setForm({ ...form, default_rate: e.target.value })}
+                className={inputCls}
+              />
+            </div>
+            <div>
+              <label className={labelCls}>Cost Price (₹) — for profit calc</label>
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={form.cost_price}
+                onChange={(e) => setForm({ ...form, cost_price: e.target.value })}
                 className={inputCls}
               />
             </div>

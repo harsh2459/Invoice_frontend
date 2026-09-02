@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { FileText, Eye, Pencil, Trash2, X, MessageCircle, Search } from "lucide-react";
+import { FileText, Eye, Pencil, Trash2, X, MessageCircle, Search, IndianRupee } from "lucide-react";
 import { api } from "../../api";
 import { toast } from "../../toast";
 import { confirmDialog } from "../../confirm";
 import { formatDate, formatINR } from "../../format";
+import ReceivePaymentModal from "./ReceivePaymentModal";
 import DateField from "../DateField";
 import { WaSendModal } from "./whatsapp";
 
@@ -51,6 +52,7 @@ export default function Invoices() {
   const [waFor, setWaFor] = useState<null | { row: InvoiceRow; kind: "invoice" | "reminder" }>(
     null
   );
+  const [payFor, setPayFor] = useState<InvoiceRow | null>(null);
 
   const load = () => {
     setLoading(true);
@@ -304,6 +306,15 @@ export default function Invoices() {
                       className="px-2.5 py-2.5 border-b border-line text-right whitespace-nowrap"
                       onClick={(e) => e.stopPropagation()}
                     >
+                      {r.client_id && (
+                        <button
+                          onClick={() => setPayFor(r)}
+                          className="text-muted hover:text-positive p-1 rounded hover:bg-positive-soft transition-colors"
+                          title="Receive payment from this client"
+                        >
+                          <IndianRupee size={16} />
+                        </button>
+                      )}
                       <button
                         onClick={() =>
                           setWaFor({
@@ -311,7 +322,7 @@ export default function Invoices() {
                             kind: r.payment_status === "paid" ? "invoice" : "reminder",
                           })
                         }
-                        className="text-muted hover:text-positive p-1 rounded hover:bg-positive-soft transition-colors"
+                        className="text-muted hover:text-positive p-1 rounded hover:bg-positive-soft transition-colors ml-1"
                         title={
                           r.payment_status === "paid"
                             ? "Send invoice on WhatsApp"
@@ -358,6 +369,19 @@ export default function Invoices() {
           defaultPhone={waFor.row.client_phone || ""}
           clientName={waFor.row.client_name}
           onClose={() => setWaFor(null)}
+        />
+      )}
+
+      {payFor && payFor.client_id && (
+        <ReceivePaymentModal
+          clientId={payFor.client_id}
+          clientName={payFor.client_name}
+          companyId={payFor.company_id}
+          onClose={() => setPayFor(null)}
+          onSaved={() => {
+            setPayFor(null);
+            load();
+          }}
         />
       )}
     </div>

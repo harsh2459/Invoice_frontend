@@ -12,8 +12,13 @@ import Companies from "./components/invoicing/Companies";
 import Clients from "./components/invoicing/Clients";
 import ClientView from "./components/invoicing/ClientView";
 import Products from "./components/invoicing/Products";
-import Invoices from "./components/invoicing/Invoices";
+import DocumentsList from "./components/invoicing/DocumentsList";
+import ReceiptView from "./components/invoicing/ReceiptView";
+import ReturnView from "./components/invoicing/ReturnView";
+import InvoicingPnL from "./components/invoicing/InvoicingPnL";
+import { IndianRupee, Undo2, FileBarChart } from "lucide-react";
 import InvoiceForm from "./components/invoicing/InvoiceForm";
+import NewDocument from "./components/invoicing/NewDocument";
 import InvoiceView from "./components/invoicing/InvoiceView";
 import BankAccounts from "./components/invoicing/BankAccounts";
 import WhatsAppConnect from "./components/invoicing/WhatsAppConnect";
@@ -73,8 +78,14 @@ function App() {
 
           {/* Invoicing module */}
           <Route path="invoicing" element={<Navigate to="/invoicing/invoices" replace />} />
-          <Route path="invoicing/invoices" element={<PrivateRoute adminOnly><Invoices /></PrivateRoute>} />
-          <Route path="invoicing/invoices/new" element={<PrivateRoute adminOnly><InvoiceForm /></PrivateRoute>} />
+          <Route path="invoicing/invoices" element={<PrivateRoute adminOnly><DocumentsList only="sales" title="Sales Invoices" /></PrivateRoute>} />
+          <Route path="invoicing/payments" element={<PrivateRoute adminOnly><DocumentsList only="receipt" title="Payments Received" icon={<IndianRupee size={20} className="text-positive" />} /></PrivateRoute>} />
+          <Route path="invoicing/returns" element={<PrivateRoute adminOnly><DocumentsList only="return" title="Sales Returns" icon={<Undo2 size={20} className="text-amazon-text" />} /></PrivateRoute>} />
+          <Route path="invoicing/returns/:id" element={<PrivateRoute adminOnly><ReturnView /></PrivateRoute>} />
+          <Route path="invoicing/clients/:clientId/receipts/:rid" element={<PrivateRoute adminOnly><ReceiptView /></PrivateRoute>} />
+          <Route path="invoicing/reports" element={<PrivateRoute adminOnly><DocumentsList title="All Documents" icon={<FileBarChart size={20} className="text-primary" />} /></PrivateRoute>} />
+          <Route path="invoicing/pnl" element={<PrivateRoute adminOnly><InvoicingPnL /></PrivateRoute>} />
+          <Route path="invoicing/invoices/new" element={<PrivateRoute adminOnly><NewDocument /></PrivateRoute>} />
           <Route path="invoicing/invoices/:id/edit" element={<PrivateRoute adminOnly><InvoiceForm /></PrivateRoute>} />
           <Route path="invoicing/invoices/:id" element={<PrivateRoute adminOnly><InvoiceView /></PrivateRoute>} />
           <Route path="invoicing/companies" element={<PrivateRoute adminOnly><Companies /></PrivateRoute>} />

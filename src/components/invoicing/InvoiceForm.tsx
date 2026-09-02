@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Plus, Trash2, ArrowLeft } from "lucide-react";
+import { Plus, Trash2, ArrowLeft, Undo2 } from "lucide-react";
 import { api } from "../../api";
 import { toast } from "../../toast";
 import { formatINR } from "../../format";
 import DateField from "../DateField";
 import SearchSelect from "../SearchSelect";
 import { CompanyModal, ClientModal, ProductModal } from "./modals";
+import PaymentModeFields from "./PaymentModeFields";
 
 const inputCls =
   "w-full px-2.5 py-2 border border-line rounded-md text-[13px] bg-white focus:outline-none focus:border-primary focus:ring-2 focus:ring-primary-soft";
@@ -41,7 +42,7 @@ type ModalState =
   | { kind: "client" }
   | { kind: "product"; lineKey: number };
 
-export default function InvoiceForm() {
+export default function InvoiceForm({ embedded = false }: { embedded?: boolean }) {
   const navigate = useNavigate();
   const { id } = useParams(); // present => edit mode
   const isEdit = !!id;
@@ -65,8 +66,21 @@ export default function InvoiceForm() {
   });
   const [items, setItems] = useState<LineItem[]>([newItem()]);
 
+  // Optional: returned items on the same document (create mode only).
+  const [showReturn, setShowReturn] = useState(false);
+  const [retItems, setRetItems] = useState<LineItem[]>([newItem()]);
+  const [retReason, setRetReason] = useState<
+    "damaged" | "wrong_item" | "excess" | "not_needed" | "other"
+  >("damaged");
+
   // "Payment received now" — create mode only. Records a payment with the invoice.
-  const [payNow, setPayNow] = useState({ amount: "", paid_on: new Date().toISOString().slice(0, 10), bank_account_id: "" });
+  const [payNow, setPayNow] = useState({
+    amount: "",
+    paid_on: new Date().toISOString().slice(0, 10),
+    mode: "cash" as "cash" | "upi" | "bank" | "cheque" | "card" | "other",
+    reference: "",
+    bank_account_id: "",
+  });
   const [banks, setBanks] = useState<any[]>([]);
   const [priorDue, setPriorDue] = useState(0); // client's outstanding before this bill
 
@@ -249,8 +263,26 @@ export default function InvoiceForm() {
       payload.payment = {
         amount: payAmt,
         paid_on: payNow.paid_on || invoiceDate,
+        mode: payNow.mode,
+        reference: payNow.reference.trim() || undefined,
         bank_account_id: payNow.bank_account_id || null,
       };
+    }
+    if (!isEdit && showReturn) {
+      const retClean = retItems
+        .map((it) => ({
+          product_id: it.product_id || null,
+          description: it.description.trim(),
+          hsn: it.hsn.trim() || null,
+          qty: Number(it.qty || 0),
+          rate: Number(it.rate || 0),
+          gst_rate: Number(it.gst_rate || 0),
+        }))
+        .filter((it) => it.description && it.qty > 0);
+      if (retClean.length > 0) {
+        payload.return_items = retClean;
+        payload.return_reason = retReason;
+      }
     }
 
     setBusy(true);
@@ -288,13 +320,19 @@ export default function InvoiceForm() {
 
   return (
     <div className="space-y-4">
-      <button
-        onClick={() => navigate(isEdit ? `/invoicing/invoices/${id}` : "/invoicing/invoices")}
-        className="flex items-center gap-1.5 text-[12.5px] text-muted hover:text-ink"
-      >
-        <ArrowLeft size={14} /> {isEdit ? "Back to invoice" : "Back to invoices"}
-      </button>
-      <h1 className="text-[1.3rem] font-bold text-ink">{isEdit ? "Edit Invoice" : "New Invoice"}</h1>
+      {!embedded && (
+        <>
+          <button
+            onClick={() => navigate(isEdit ? `/invoicing/invoices/${id}` : "/invoicing/invoices")}
+            className="flex items-center gap-1.5 text-[12.5px] text-muted hover:text-ink"
+          >
+            <ArrowLeft size={14} /> {isEdit ? "Back to invoice" : "Back to invoices"}
+          </button>
+          <h1 className="text-[1.3rem] font-bold text-ink">
+            {isEdit ? "Edit Invoice" : "New Invoice"}
+          </h1>
+        </>
+      )}
 
       <form onSubmit={submit} className="flex flex-col lg:flex-row gap-4 items-start">
         {/* main column */}
@@ -478,6 +516,148 @@ export default function InvoiceForm() {
           </div>
         </div>
 
+        {/* Optional: returned items on this same invoice */}
+        {!isEdit && (
+          <div className="bg-white rounded-lg border border-line">
+            <button
+              type="button"
+              onClick={() => setShowReturn((v) => !v)}
+              className="w-full flex items-center justify-between px-4 py-3 text-[13.5px] font-semibold text-ink hover:bg-hover"
+            >
+              <span className="flex items-center gap-2">
+                <Undo2 size={15} className="text-amazon-text" /> Returned items on this bill
+                <span className="text-[11px] font-normal text-muted">(optional)</span>
+              </span>
+              <Plus
+                size={15}
+                className={`transition-transform ${showReturn ? "rotate-45" : ""}`}
+              />
+            </button>
+            {showReturn && (
+              <div className="border-t border-line">
+                <div className="p-3 pb-0 max-w-xs">
+                  <label className={labelCls}>Reason</label>
+                  <select
+                    value={retReason}
+                    onChange={(e) => setRetReason(e.target.value as any)}
+                    className={inputCls}
+                  >
+                    <option value="damaged">Damaged (not restocked)</option>
+                    <option value="wrong_item">Wrong item</option>
+                    <option value="excess">Excess supply</option>
+                    <option value="not_needed">Not needed</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div className="overflow-x-auto sm:overflow-x-visible">
+                  <table className="w-full min-w-[560px] text-[13px] border-collapse table-fixed">
+                    <colgroup>
+                      <col />
+                      <col className="w-20" />
+                      <col className="w-28" />
+                      <col className="w-20" />
+                      <col className="w-32" />
+                      <col className="w-9" />
+                    </colgroup>
+                    <thead>
+                      <tr className="text-[12px] font-semibold text-muted">
+                        <th className="px-2 py-2 border-b border-line text-left">Item</th>
+                        <th className="px-2 py-2 border-b border-line text-right">Qty</th>
+                        <th className="px-2 py-2 border-b border-line text-right">Rate</th>
+                        <th className="px-2 py-2 border-b border-line text-right">GST%</th>
+                        <th className="px-2 py-2 border-b border-line text-right">Amount</th>
+                        <th className="px-2 py-2 border-b border-line"></th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {retItems.map((it) => {
+                        const amount = Number(it.qty || 0) * Number(it.rate || 0);
+                        return (
+                          <tr key={it.key}>
+                            <td className="px-2 py-2 border-b border-line align-top">
+                              <SearchSelect
+                                value={it.product_id}
+                                onChange={(v) => {
+                                  const p = products.find((x) => String(x.id) === v);
+                                  setRetItems((prev) =>
+                                    prev.map((r) =>
+                                      r.key === it.key
+                                        ? {
+                                            ...r,
+                                            product_id: v,
+                                            description: p?.name ?? "",
+                                            hsn: p?.hsn != null ? String(p.hsn) : "",
+                                            rate:
+                                              p?.default_rate != null ? String(p.default_rate) : "",
+                                            gst_rate:
+                                              p?.gst_rate != null ? String(p.gst_rate) : "",
+                                          }
+                                        : r
+                                    )
+                                  );
+                                }}
+                                options={productOpts}
+                                placeholder={companyPicked ? "Pick a product…" : "Pick a company"}
+                                disabled={!companyPicked}
+                              />
+                            </td>
+                            {(["qty", "rate", "gst_rate"] as const).map((f) => (
+                              <td key={f} className="px-2 py-2 border-b border-line align-top">
+                                <input
+                                  type="number"
+                                  min="0"
+                                  step="0.01"
+                                  value={it[f]}
+                                  onChange={(e) =>
+                                    setRetItems((prev) =>
+                                      prev.map((r) =>
+                                        r.key === it.key ? { ...r, [f]: e.target.value } : r
+                                      )
+                                    )
+                                  }
+                                  className={`${inputCls} no-spinner px-1.5 py-1.5 text-right`}
+                                />
+                              </td>
+                            ))}
+                            <td className="px-2 py-2 border-b border-line text-right tabular-nums align-top pt-2.5 font-medium text-negative">
+                              − {formatINR(amount)}
+                            </td>
+                            <td className="px-2 py-2 border-b border-line text-right align-top pt-2">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  setRetItems((prev) =>
+                                    prev.length === 1
+                                      ? prev
+                                      : prev.filter((x) => x.key !== it.key)
+                                  )
+                                }
+                                disabled={retItems.length === 1}
+                                className="text-muted hover:text-negative p-1 rounded hover:bg-negative-soft disabled:opacity-30"
+                              >
+                                <Trash2 size={15} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="px-3 py-2.5 border-t border-line">
+                  <button
+                    type="button"
+                    onClick={() => setRetItems((prev) => [...prev, newItem()])}
+                    className="text-[12.5px] font-medium text-primary hover:bg-primary-soft px-2 py-1 rounded"
+                  >
+                    + Add line
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
+
         </div>
         {/* end main column */}
 
@@ -595,27 +775,23 @@ export default function InvoiceForm() {
                 />
                 {Number(payNow.amount || 0) > 0 && (
                   <>
-                    <div className="grid grid-cols-1 gap-2">
-                      <DateField
-                        value={payNow.paid_on}
-                        onChange={(iso) => setPayNow((p) => ({ ...p, paid_on: iso }))}
-                      />
-                      <select
-                        value={payNow.bank_account_id}
-                        onChange={(e) =>
-                          setPayNow((p) => ({ ...p, bank_account_id: e.target.value }))
-                        }
-                        className={inputCls}
-                      >
-                        <option value="">Bank account — none</option>
-                        {banks.map((b) => (
-                          <option key={b.id} value={b.id}>
-                            {b.name}
-                            {b.last4 ? ` ••••${b.last4}` : ""}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                    <PaymentModeFields
+                      value={{
+                        mode: payNow.mode,
+                        bank_account_id: payNow.bank_account_id,
+                        reference: payNow.reference,
+                      }}
+                      onChange={(v) =>
+                        setPayNow((p) => ({
+                          ...p,
+                          mode: v.mode,
+                          bank_account_id: v.bank_account_id,
+                          reference: v.reference,
+                        }))
+                      }
+                      banks={banks}
+                      compact
+                    />
                     {(() => {
                       const pay = Number(payNow.amount);
                       const thisBillDue = round2(Math.max(0, totals.total - pay));

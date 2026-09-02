@@ -58,6 +58,16 @@ interface Invoice {
   client_phone: string | null;
   items: InvoiceItem[];
   payments: Payment[];
+  linked_return?: {
+    id: number;
+    number: string | null;
+    reason: string;
+    restock: number;
+    subtotal: number | string;
+    tax_total: number | string;
+    total: number | string;
+    items: InvoiceItem[];
+  } | null;
 }
 
 function termsLabel(invoiceDate: string, dueDate: string | null): string {
@@ -469,6 +479,47 @@ export default function InvoiceView() {
             </table>
           </div>
 
+          {/* returned items (created on the same document) */}
+          {inv.linked_return && inv.linked_return.items.length > 0 && (
+            <div className="overflow-x-auto -mx-1">
+              <div className="text-[12.5px] font-semibold text-amazon-text mb-1">
+                Less: Returned Items — {inv.linked_return.number} (
+                {String(inv.linked_return.reason).replace("_", " ")}
+                {inv.linked_return.restock ? "" : ", not restocked"})
+              </div>
+              <table className="w-full text-[13px] border-collapse">
+                <thead>
+                  <tr className="bg-amazon text-amazon-text text-[11px] font-semibold uppercase tracking-wide">
+                    <th className="px-3 py-2 text-center w-8">#</th>
+                    <th className="px-3 py-2 text-left">Item</th>
+                    <th className="px-3 py-2 text-right w-16">Qty</th>
+                    <th className="px-3 py-2 text-right w-24">Rate</th>
+                    <th className="px-3 py-2 text-right w-28">Amount</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {inv.linked_return.items.map((it, i) => (
+                    <tr key={it.id}>
+                      <td className="px-3 py-2 text-center text-muted border-b border-line">
+                        {i + 1}
+                      </td>
+                      <td className="px-3 py-2 text-ink border-b border-line">{it.description}</td>
+                      <td className="px-3 py-2 text-right tabular-nums border-b border-line">
+                        {Number(it.qty).toLocaleString("en-IN")}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums border-b border-line">
+                        {formatINR(it.rate)}
+                      </td>
+                      <td className="px-3 py-2 text-right tabular-nums border-b border-line text-negative">
+                        − {formatINR(it.amount)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+
           {/* totals */}
           <div className="flex flex-col sm:flex-row sm:justify-between gap-4">
             <div className="text-[11.5px] text-muted italic max-w-xs pt-1">
@@ -519,6 +570,12 @@ export default function InvoiceView() {
                   <span>Grand Total</span>
                   <span className="tabular-nums">{formatINR(total)}</span>
                 </div>
+                {inv.linked_return && (
+                  <div className="flex justify-between text-amazon-text">
+                    <span>Less: Return {inv.linked_return.number}</span>
+                    <span className="tabular-nums">− {formatINR(inv.linked_return.total)}</span>
+                  </div>
+                )}
                 {paid > 0 && (
                   <div className="flex justify-between text-positive">
                     <span>Amount Paid</span>

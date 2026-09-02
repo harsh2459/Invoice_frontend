@@ -22,6 +22,8 @@ import {
   Receipt,
   BookOpen,
   FileBarChart,
+  IndianRupee,
+  Undo2,
 } from "lucide-react";
 
 /**
@@ -121,9 +123,37 @@ export const MODULES: ModuleDef[] = [
     nav: [
       {
         kind: "link",
-        label: "Invoices",
+        label: "Sales Invoices",
         icon: <FileText size={16} />,
         path: "/invoicing/invoices",
+        adminOnly: true,
+      },
+      {
+        kind: "link",
+        label: "Payments Received",
+        icon: <IndianRupee size={16} />,
+        path: "/invoicing/payments",
+        adminOnly: true,
+      },
+      {
+        kind: "link",
+        label: "Sales Returns",
+        icon: <Undo2 size={16} />,
+        path: "/invoicing/returns",
+        adminOnly: true,
+      },
+      {
+        kind: "link",
+        label: "Profit & Loss",
+        icon: <TrendingUp size={16} />,
+        path: "/invoicing/pnl",
+        adminOnly: true,
+      },
+      {
+        kind: "link",
+        label: "Reports (All)",
+        icon: <FileBarChart size={16} />,
+        path: "/invoicing/reports",
         adminOnly: true,
       },
       {
